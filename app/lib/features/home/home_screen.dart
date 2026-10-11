@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/network/game_socket.dart';
@@ -16,7 +17,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final name = TextEditingController(),
       code = TextEditingController(),
       guess = TextEditingController();
-  String language = 'en', endpoint = 'ws://10.0.2.2:3000';
+  String language = 'en',
+      endpoint = kIsWeb ? 'ws://localhost:3001' : 'ws://10.0.2.2:3000';
   Map<String, dynamic>? room;
   String? error;
   String? selfId;
@@ -78,82 +80,164 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(body: SafeArea(child: r == null ? _home() : _room(r)));
   }
 
-  Widget _home() => Center(
-      child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
-          child: SingleChildScrollView(
-              padding: const EdgeInsets.all(26),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 38),
-                    Container(
-                        height: 104,
-                        width: 104,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                            color: const Color(0xffffdfb1),
-                            borderRadius: BorderRadius.circular(32)),
-                        child:
-                            const Text('✏️', style: TextStyle(fontSize: 52))),
-                    const SizedBox(height: 20),
-                    Text('blot',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context)
-                            .textTheme
-                            .displayLarge
-                            ?.copyWith(
-                                fontWeight: FontWeight.w900,
-                                color: const Color(0xff302b3d),
-                                letterSpacing: -3)),
-                    const Text('Draw it. Guess it. Have a blast.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.black54, fontSize: 16)),
-                    const SizedBox(height: 34),
-                    TextField(
-                        controller: name,
-                        decoration: const InputDecoration(
-                            labelText: 'Your name',
-                            prefixIcon: Icon(Icons.person))),
-                    const SizedBox(height: 14),
-                    DropdownButtonFormField<String>(
-                        initialValue: language,
-                        decoration:
-                            const InputDecoration(labelText: 'Word language'),
-                        items: const [
-                          DropdownMenuItem(value: 'en', child: Text('English')),
-                          DropdownMenuItem(value: 'hi', child: Text('हिन्दी')),
-                          DropdownMenuItem(
-                              value: 'hinglish', child: Text('Hinglish')),
-                          DropdownMenuItem(value: 'mr', child: Text('मराठी'))
-                        ],
-                        onChanged: (v) => setState(() => language = v ?? 'en')),
-                    const SizedBox(height: 14),
-                    FilledButton.icon(
-                        onPressed: _create,
-                        icon: const Icon(Icons.add),
-                        label: const Padding(
-                            padding: EdgeInsets.all(14),
-                            child: Text('Create a room'))),
-                    const SizedBox(height: 10),
-                    Row(children: [
-                      Expanded(
-                          child: TextField(
-                              controller: code,
-                              textCapitalization: TextCapitalization.characters,
-                              maxLength: 6,
-                              decoration: const InputDecoration(
-                                  labelText: 'Room code', counterText: ''))),
-                      const SizedBox(width: 10),
-                      FilledButton.tonal(
-                          onPressed: _join, child: const Text('Join'))
-                    ]),
-                    Text('●  ${connected ? 'Connected' : 'Ready to connect'}',
+  Widget _home() => LayoutBuilder(builder: (context, _) {
+        return Stack(fit: StackFit.expand, children: [
+          Image.asset('assets/images/game-night-hero.png', fit: BoxFit.cover),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0x66a83f24),
+                  Color(0x99b64a29),
+                  Color(0xeafff3e4),
+                  Color(0xfffff8ed),
+                ],
+                stops: [0, .38, .70, 1],
+              ),
+            ),
+          ),
+          SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 26, 24, 30),
+            child: Column(children: [
+              const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                CircleAvatar(
+                    radius: 19,
+                    backgroundColor: Color(0xfffff4e3),
+                    child: Icon(Icons.brush_rounded, color: Color(0xffe96e50))),
+                SizedBox(width: 10),
+                Text('BLOT',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 21,
+                        letterSpacing: 2,
+                        fontWeight: FontWeight.w900))
+              ]),
+              const SizedBox(height: 82),
+              const Text('Draw. Guess.\nLaugh together.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      color: Colors.white,
+                      height: 1.02,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 40,
+                      shadows: [
+                        Shadow(color: Color(0x55000000), blurRadius: 10)
+                      ])),
+              const SizedBox(height: 18),
+              ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 460),
+                  child: _welcomeCard()),
+            ]),
+          )
+        ]);
+      });
+
+  Widget _welcomeCard() => Container(
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: .94),
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: const [
+            BoxShadow(
+                color: Color(0x160d3440), blurRadius: 30, offset: Offset(0, 12))
+          ],
+        ),
+        child:
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          const Text('Game night starts here',
+              style: TextStyle(
+                  color: Color(0xff173844),
+                  fontSize: 27,
+                  fontWeight: FontWeight.w900)),
+          const SizedBox(height: 6),
+          const Text('Create a private room or join your friends.',
+              style: TextStyle(color: Color(0xff60727a), fontSize: 15)),
+          const SizedBox(height: 26),
+          TextField(
+              controller: name,
+              decoration: const InputDecoration(
+                  labelText: 'Your name',
+                  prefixIcon: Icon(Icons.person_outline))),
+          const SizedBox(height: 14),
+          DropdownButtonFormField<String>(
+              initialValue: language,
+              decoration: const InputDecoration(
+                  labelText: 'Word language',
+                  prefixIcon: Icon(Icons.language_outlined)),
+              items: const [
+                DropdownMenuItem(value: 'en', child: Text('English')),
+                DropdownMenuItem(value: 'hi', child: Text('हिन्दी')),
+                DropdownMenuItem(value: 'hinglish', child: Text('Hinglish')),
+                DropdownMenuItem(value: 'mr', child: Text('मराठी'))
+              ],
+              onChanged: (v) => setState(() => language = v ?? 'en')),
+          const SizedBox(height: 18),
+          SizedBox(
+            height: 54,
+            child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xffe96e50),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16))),
+                onPressed: _create,
+                icon: const Icon(Icons.add_circle_outline),
+                label: const Text('Create a room',
+                    style:
+                        TextStyle(fontWeight: FontWeight.w800, fontSize: 16))),
+          ),
+          const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Row(children: [
+                Expanded(child: Divider()),
+                Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Text('OR JOIN A ROOM',
                         style: TextStyle(
-                            color: connected ? Colors.green : Colors.black45)),
-                    if (error != null)
-                      Text(error!, style: const TextStyle(color: Colors.red))
-                  ]))));
+                            color: Color(0xff8b989d),
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1))),
+                Expanded(child: Divider()),
+              ])),
+          Row(children: [
+            Expanded(
+                child: TextField(
+                    controller: code,
+                    textCapitalization: TextCapitalization.characters,
+                    maxLength: 6,
+                    decoration: const InputDecoration(
+                        labelText: 'Room code', counterText: ''))),
+            const SizedBox(width: 10),
+            SizedBox(
+                height: 54,
+                child: FilledButton(
+                    style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xffd9f0eb),
+                        foregroundColor: const Color(0xff173844)),
+                    onPressed: _join,
+                    child: const Text('Join',
+                        style: TextStyle(fontWeight: FontWeight.w800))))
+          ]),
+          const SizedBox(height: 16),
+          Row(children: [
+            Icon(Icons.circle,
+                size: 9,
+                color: connected
+                    ? const Color(0xff33a474)
+                    : const Color(0xffaeb7b7)),
+            const SizedBox(width: 7),
+            Text(connected ? 'Connected to game server' : 'Ready to connect',
+                style: const TextStyle(color: Color(0xff738187), fontSize: 13))
+          ]),
+          if (error != null) ...[
+            const SizedBox(height: 8),
+            Text(error!, style: const TextStyle(color: Colors.red))
+          ]
+        ]),
+      );
   void _create() {
     if (name.text.trim().isEmpty) {
       setState(() => error = 'Enter your name to continue');
